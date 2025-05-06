@@ -278,5 +278,37 @@ namespace server.Controllers
              res.Message = "User Successfully logout";
              return Ok(res);
          }
+        [HttpGet("users-with-role")]
+        public async Task<ActionResult<ResponseDto>> GetUsersWithRoleUser()
+        {
+            ResponseDto res = new ResponseDto();
+
+            List<User> users = await userRepository.GetUsersByRole("USER");
+
+            if (users == null || !users.Any())
+            {
+                res.IsSuccessed = false;
+                res.Message = "No users found with role 'User'";
+                return NotFound(res);
+            }
+
+            res.IsSuccessed = true;
+            res.Message = "Users with role 'User' retrieved successfully";
+            res.Data = users.Select(user => new UserDto
+            {
+                UserId = user.UserId,
+                UserName = user.UserName,
+                Email = user.Email,
+                Address = user.Address,
+                Role = user.Role
+            }).ToList();
+
+
+
+            return Ok(res);
+        }
+
+
+
     }
 }

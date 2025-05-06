@@ -12,5 +12,8 @@ namespace server.Interface.Repository
 
         Task<List<User>> GetAllUsers();
         Task<User?> GetUserById(int id);
+
+        Task<List<User>> GetUsersByRole(string email);
+
     }
 }
