@@ -521,11 +521,13 @@ namespace server.Data
          public DbSet<ProductReview> ProductReviews { get;  set; }
 
          public DbSet<Address> Address { get; set; }
-
-         public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<ShippingAddress> shippingAddresses { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
          public DbSet<Order> Orders { get; set; }
         public DbSet<Orders> ProductOrders { get; set; }
         public DbSet<PaymentTransaction> PaymentTransactions { get; set; }  // Add PaymentTransactions table
+        public DbSet<PaymentDetails> PaymentDetails { get; set; }
+
 
     }
 }

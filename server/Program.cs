@@ -67,6 +67,7 @@ builder.Services.AddScoped<IImageRepository,ImageRepository>();
 builder.Services.AddScoped<IWishListItemRepository, WishListItemRepository>();
 builder.Services.AddScoped<IWishListRepository, WishListRepository>();
 builder.Services.AddScoped<IAddressRepository, AddressRepository>();
+builder.Services.AddScoped<IPaymentDetailRepository,PaymentDetailRepository > ();
 
 
 builder.Services.AddScoped<ICartItemRepository, CartItemRepository>();
@@ -76,7 +77,7 @@ builder.Services.AddScoped<IImageService,ImageService>();
 builder.Services.AddScoped<ICatalogService, CatalogService>();
 builder.Services.AddScoped<IWishListService, WishListService>();
 builder.Services.AddScoped<ICartService, CartService>();
-builder.Services.AddScoped<IRazorpayService, RazorpayService>();
+builder.Services.AddScoped<IPaymentService, PaymentService>();
 var awsOptions = builder.Configuration.GetAWSOptions();
 builder.Services.AddDefaultAWSOptions(awsOptions);
 builder.Services.AddAWSService<IAmazonS3>();

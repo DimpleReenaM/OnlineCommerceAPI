@@ -8,7 +8,7 @@ using server.Service;
 [ApiController]
 public class PaymentController : ControllerBase
 {
- 
+    private readonly IPaymentService _razorpayService;
 
     // Endpoint to create Razorpay order
     //[HttpPost("create-order")]
@@ -31,39 +31,68 @@ public class PaymentController : ControllerBase
     //    return isVerified ? Ok("Payment verified successfully") : BadRequest("Payment verification failed");
     //}
 
-    private readonly IRazorpayService _razorpayService;
+    //private readonly IRazorpayService _razorpayService;
 
-    public PaymentController(IRazorpayService razorpayService)
+    public PaymentController(IPaymentService razorpayService)
     {
         _razorpayService = razorpayService;
     }
-
-    // ✅ Create Razorpay Order
-    [HttpPost("create-order")]
-    public IActionResult CreateOrder([FromBody] RazorpayPaymentDto paymentDto)
+    [HttpPost("update-payment")]
+    public async Task<IActionResult> UpdatePayment([FromBody] PaymentVerificationRequest verificationRequest)
     {
-        var order = _razorpayService.CreateRayorPayOrder(paymentDto.Amount, paymentDto.Currency);
-        return Ok(order);
-    }
-
-    // ✅ Verify Razorpay Payment
-    [HttpPost("verify-payment")]
-    public IActionResult VerifyPayment([FromBody] PaymentVerificationRequest verificationRequest)
-    {
-        bool isVerified = _razorpayService.VerifyPaymentSignature(
+        await _razorpayService.VerifyPaymentSignature(
             verificationRequest.OrderId,
             verificationRequest.PaymentId,
             verificationRequest.Signature
         );
+        // Send Payment Success Email
+        //if (!string.IsNullOrEmpty(verificationRequest.Email))
+        //{
+        //    await _emailService.SendEmailAsync(
+        //        verificationRequest.Email,
+        //        "Payment Successful",
+        //        $"<h2>Thank you for your payment!</h2><p>Your payment ID is <b>{verificationRequest.PaymentId}</b>.</p>"
+        //    );
+        //}
 
-        return isVerified ? Ok("Payment verified successfully") : BadRequest("Payment verification failed");
+        ResponseDto res = new ResponseDto();
+        return Ok(res.success("Payment Updated"));
     }
 }
+// ✅ Create Razorpay Order
+//[HttpPost("create-order")]
+//public IActionResult CreateOrder([FromBody] RazorpayPaymentDto paymentDto)
+//{
+//    var order = _razorpayService.CreateRayorPayOrder(paymentDto.Amount, paymentDto.Currency);
+//    return Ok(order);
+//}
+
+// ✅ Verify Razorpay Payment
+//    [HttpPost("verify-payment")]
+//    public IActionResult VerifyPayment([FromBody] PaymentVerificationRequest verificationRequest)
+//    {
+//        bool isVerified = _razorpayService.VerifyPaymentSignature(
+//            verificationRequest.OrderId,
+//            verificationRequest.PaymentId,
+//            verificationRequest.Signature
+//        );
+
+//        return isVerified ? Ok("Payment verified successfully") : BadRequest("Payment verification failed");
+//    }
+//}
+
+//public class PaymentVerificationRequest
+//{
+//    public string OrderId { get; set; }
+//    public string PaymentId { get; set; }
+//    public string Signature { get; set; }
+//    public int UserId { get; set; }
+//}
 
 public class PaymentVerificationRequest
 {
     public string OrderId { get; set; }
     public string PaymentId { get; set; }
     public string Signature { get; set; }
-    public int UserId { get; set; }
+    public string Email { get; set; }
 }
