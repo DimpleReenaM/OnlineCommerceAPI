@@ -1,12 +1,15 @@
+using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Razorpay.Api;
 using server.Data;
 using server.Dto;
+using server.Dto.order;
 using server.Entities;
 using server.Interface.Service;
 using System.Security.Cryptography;
 using System.Text;
+using Order = server.Entities.Order;
 
 namespace server.Controllers
 {
@@ -14,97 +17,61 @@ namespace server.Controllers
     [Route("api/[controller]")]
     public class OrderController : ControllerBase
     {
-        private readonly DataContex _context;
-        private readonly IRazorpayService _razorpayService;
-        private readonly ICartService _cartService;
+
+        private readonly IOrderService orderService;
+        private readonly IPaymentService paymentService;
+        private readonly IMapper mapper;
 
         public OrderController(
-            DataContex context,
-            IRazorpayService razorpayService,
-            ICartService cartService)
+            IOrderService orderService,
+            IPaymentService paymentService,
+            IMapper mapper
+        )
         {
-            _context = context;
-            _razorpayService = razorpayService;
-            _cartService = cartService;
+            this.orderService = orderService;
+            this.paymentService = paymentService;
+            this.mapper = mapper;
         }
 
-        [HttpPost("create")]
-        public async Task<IActionResult> CreateOrder([FromBody] OrderRequestDto request)
+        [HttpPost("CreateOrder")]
+        public async Task<ActionResult<ResponseDto>> CreateOrder([FromBody] CreateOrderDTO order)
         {
-            // Get user's cart
-            var cart = await _cartService.GetUserCartAsync(request.UserId);
-            if (cart == null || !cart.Items.Any())
+            if (!Int32.TryParse(User.FindFirst("UserId")?.Value, out int userId))
             {
-                return BadRequest("Cart is empty");
+                return Unauthorized();
             }
+            var res = new ResponseDto();
 
-            // Create Razorpay order
-            var razorpayOrder = _razorpayService.CreateRayorPayOrder(cart.TotalAmount, "INR");
+            Order createdOrder = await orderService.CreateOrderAsync(userId, order.CartId, order.ShipToAddress);
 
-            // Create order in database
-            var order = new server.Entities.Order
-            {
-                UserId = request.UserId,
-                OrderDate = DateTime.UtcNow,
-                TotalAmount = cart.TotalAmount,
-                Status = OrderStatus.Pending,
-                ShippingAddress = request.ShippingAddress,
-                RazorpayOrderId = razorpayOrder.OrderId,
-                CreatedDate = DateTime.UtcNow,
-                CreatedBy = request.UserId.ToString()
-            };
-
-            // Add order Items
-            order.OrderItems = cart.Items.Select(item => new OrderItem
-            {
-                ProductId = item.ProductId,
-                Quantity = item.Quantity,
-                Price = item.Price,
-                Subtotal = item.Subtotal,
-                CreatedDate = DateTime.UtcNow,
-                CreatedBy = request.UserId.ToString()
-            }).ToList();
-
-            // Save order
-            // TODO: Add order to database
-
-            return Ok(new
-            {
-                OrderId = order.Id,
-                RazorpayOrderId = razorpayOrder.OrderId,
-                Amount = razorpayOrder.Amount,
-                Currency = razorpayOrder.Currency
-            });
+            PaymentDetails details = await paymentService.InitializePayment(userId, createdOrder.Id, createdOrder.TotalPriceAfterDiscount);
+            return Ok(res.success("Order Created Successfully", details));
         }
 
-        [HttpPost("verify-payment")]
-        public async Task<IActionResult> VerifyPayment([FromBody] PaymentVerificationRequest request)
+        [HttpGet("Get-all-orders")]
+        public async Task<ActionResult<ResponseDto>> GetAllOrders()
         {
-            var isVerified = _razorpayService.VerifyPaymentSignature(
-                request.OrderId,
-                request.PaymentId,
-                request.Signature
-            );
-
-            if (isVerified)
+            if (!Int32.TryParse(User.FindFirst("UserId")?.Value, out int userId))
             {
-                // TODO: Update order status in database
-                // await _orderService.UpdateOrderStatus(request.OrderId, OrderStatus.Paid);
-
-                // Clear user's cart
-                await _cartService.ClearCartAsync(request.UserId);
-
-                return Ok("Payment verified successfully");
+                return Unauthorized();
             }
+            var orders = await orderService.GetOrdersAsync(userId);
+            var orderDto = mapper.Map<List<GetUserOrdersDTO>>(orders);
 
-            return BadRequest("Payment verification failed");
+            return Ok(orderDto);
         }
 
-        [HttpGet("user/{userId}")]
-        public async Task<IActionResult> GetUserOrders(int userId)
+        [HttpGet("orderdetail/{orderId}")]
+        public async Task<ActionResult> GetOrderDetail(int orderId)
         {
-            // TODO: Implement GetUserOrders method
-            return Ok(new List<server.Entities.Order>());
+            if (!Int32.TryParse(User.FindFirst("UserId")?.Value, out int userId))
+            {
+                return Unauthorized();
+            }
+            OrderDetailDTO details = await orderService.GetOrderDetailAsync(orderId, userId);
+            var orderDto = mapper.Map<OrderDto>(details.order);
+
+            return Ok(new { order = orderDto, paymentDetails = details.paymentDetails, details.shippingAddress });
         }
     }
 }
