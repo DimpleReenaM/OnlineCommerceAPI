@@ -43,5 +43,12 @@ namespace server.Repository
             return await this.contex.users.FindAsync(id);
         }
 
+        public async Task<List<User?>> GetUsersByRole(string role)
+        {
+            return await contex.users
+                   .Where(u => u.Role == role)
+                   .ToListAsync();
+        }
+
     }
 }
